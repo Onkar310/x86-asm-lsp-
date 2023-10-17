@@ -1,7 +1,7 @@
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import Completer, Completion
+import re
 
-# Define extensive lists of valid assembly instructions
 valid_instructions = [
     "mov",
     "add",
@@ -126,12 +126,8 @@ valid_instructions = [
     "xchg",
     "xlat",
     "xor",
-    "your_instruction_1",
-    "your_instruction_2",
-    "your_instruction_3",  # Add your custom instructions
 ]
 
-# Define extensive list of valid directives
 valid_directives = [
     "org",
     "end",
@@ -149,11 +145,9 @@ valid_directives = [
     "rb",
     "rs",
     "dot",
-    "your_directive_1",
-    "your_directive_2",  # Add your custom directives
 ]
 
-# Create a list of valid conditions
+
 valid_conditions = [
     "eq",
     "ne",
@@ -161,8 +155,6 @@ valid_conditions = [
     "le",
     "gt",
     "ge",
-    "your_condition_1",
-    "your_condition_2",  # Add custom conditions
 ]
 valid_numbers = [
     "0",
@@ -174,9 +166,9 @@ valid_numbers = [
     "6",
     "7",
     "8",
-    "9",  # Add custom conditions
+    "9",
 ]
-# Create a list of valid registers
+
 valid_registers = [
     "ax",
     "bx",
@@ -199,24 +191,18 @@ valid_registers = [
     "es",
     "ss",
     "fs",
-    "gs",  # Add more registers
+    "gs",
 ]
 
-# Create a list of valid labels
+
 valid_labels = [
     "start",
     "loop",
     "end",
-    "your_label_1",
-    "your_label_2",  # Add custom labels
 ]
 
-# Create a list of valid numbers
-
-
-# Create context-based suggestions for each instruction
 context_suggestions = {
-    "mov": ["REGISTER", "NUMBER", "LABEL"],
+    "mov": ["REGISTER", "NUMBER"],
     "add": ["REGISTER", "NUMBER"],
     "sub": ["REGISTER", "NUMBER"],
     "jmp": ["LABEL"],
@@ -224,23 +210,47 @@ context_suggestions = {
     "dec": ["REGISTER"],
     "org": ["NUMBER"],
     "if": ["CONDITION"],
-    "your_instruction_1": ["your_context_1", "your_context_2"],  # Add custom contexts
-    "your_instruction_2": ["your_context_3", "your_context_4"],  # Add custom contexts
-    "your_directive_1": ["your_context_5", "your_context_6"],  # Add custom contexts
-    "your_directive_2": ["your_context_7", "your_context_8"],  # Add custom contexts
+    "ax": ["REGISTER"],
+    "bx": ["REGISTER"],
+    "cx": ["REGISTER"],
+    "dx": ["REGISTER"],
+    "si": ["REGISTER"],
+    "di": ["REGISTER"],
+    "sp": ["REGISTER"],
+    "bp": ["REGISTER"],
+    "ah": ["REGISTER"],
+    "bh": ["REGISTER"],
+    "ch": ["REGISTER"],
+    "dh": ["REGISTER"],
+    "al": ["REGISTER"],
+    "bl": ["REGISTER"],
+    "cl": ["REGISTER"],
+    "dl": ["REGISTER"],
+    "cs": ["REGISTER"],
+    "ds": ["REGISTER"],
+    "es": ["REGISTER"],
+    "ss": ["REGISTER"],
+    "fs": ["REGISTER"],
+    "gs": ["REGISTER"],
 }
 
 
-# Create a custom Completer for context-based suggestions
 class ContextCompleter(Completer):
+    def __init__(self):
+        self.user_input = ""
+
     def get_completions(self, document, complete_event):
         current_text = document.text_before_cursor
-        parts = current_text.split()
+        full_text = self.user_input + current_text
+        parts = full_text.split()
         if parts:
             last_part = parts[-1]
+
             if last_part in context_suggestions:
                 suggestions = context_suggestions[last_part]
+
                 if "REGISTER" in suggestions:
+                    # If not a valid register prefix, display all registers
                     suggestions.remove("REGISTER")
                     suggestions.extend(valid_registers)
                 if "NUMBER" in suggestions:
@@ -253,42 +263,37 @@ class ContextCompleter(Completer):
                     suggestions.remove("LABEL")
                     suggestions.extend(valid_labels)
                 for suggestion in suggestions:
-                    yield Completion(suggestion, start_position=-len(last_part))
+                    yield Completion(suggestion, start_position=0)
+            else:
+                pattern = r"^[+-]?\d+$"
+                valid_instr_suggestions = [
+                    instr for instr in valid_instructions if instr.startswith(last_part)
+                ]
+                if bool(re.match(pattern, last_part)):
+                    valid_instr_suggestions = [instr for instr in valid_numbers]
+                if valid_instr_suggestions:
+                    for suggestion in valid_instr_suggestions:
+                        yield Completion(suggestion, start_position=0)
+                else:
+                    for instr in valid_instructions:
+                        yield Completion(instr)
 
 
-# Initialize the session with the custom Completer
 session = PromptSession(completer=ContextCompleter())
 
 
 def main():
     try:
-        last_instruction = None
+        print("Enter code  :")
+        input = session.prompt()
         while True:
-            user_input = session.prompt("Enter assembly code: ")
-
-            if user_input:
-                parts = user_input.split()
-                if parts:
-                    last_part = parts[-1]
-
-                    if last_part in context_suggestions:
-                        # Suggest context-based next tokens
-                        suggested_tokens = context_suggestions.get(last_part, [])
-                        if suggested_tokens:
-                            print("Suggested Code: " + ", ".join(suggested_tokens))
-                    else:
-                        # Suggest valid directives or instructions
-                        if last_part == "":
-                            print(f"Suggested Instructions: {valid_instructions}")
-                        elif last_part in valid_instructions:
-                            print(f"Suggested Directives: {valid_directives}")
-                        elif last_part == "if":
-                            print(f"Suggested Conditions: {valid_conditions}")
-                        else:
-                            print("Invalid input")
+            user_input = session.prompt()
+            input += user_input
 
     except KeyboardInterrupt:
         print("Goodbye!")
+    finally:
+        print(input)
 
 
 if __name__ == "__main__":
